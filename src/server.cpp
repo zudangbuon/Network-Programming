@@ -22,6 +22,7 @@
 #include "net.hpp"
 #include "rate_limiter.hpp"
 #include "transfer.hpp"
+#include "terminal_ui.hpp"
 
 namespace fs = std::filesystem;
 
@@ -46,7 +47,7 @@ static std::mutex g_log_mutex;
 
 static void log_line(const std::string& s) {
     std::lock_guard<std::mutex> lk(g_log_mutex);
-    std::cout << s << std::endl;
+    ui::print_info(s);
 }
 
 static void show_progress(const std::string& prefix, uint64_t done, uint64_t total, int& last_pct) {
@@ -233,6 +234,8 @@ static void handle_client(int client_fd, sockaddr_in client_addr, fs::path uploa
 }
 
 int main(int argc, char** argv) {
+    ui::print_server_banner();
+
     int port = kDefaultPort;
     uint64_t rate_limit_bps = 0;
     if (argc >= 2) port = std::stoi(argv[1]);
@@ -240,11 +243,11 @@ int main(int argc, char** argv) {
         rate_limit_bps = static_cast<uint64_t>(std::stoull(argv[2]));
     } else {
         // Interactive rate limit configuration
-        std::cout << "\n  Enable rate limiting per client? [y/N]: " << std::flush;
+        std::cout << "\n" << ui::get_margin() << ui::color::bcyan << "Enable rate limiting per client? [y/N]: " << ui::color::reset << std::flush;
         std::string answer;
         std::getline(std::cin, answer);
         if (!answer.empty() && (answer[0] == 'y' || answer[0] == 'Y')) {
-            std::cout << "  Enter bandwidth limit (e.g. 1m = 1 MB/s, 500k = 500 KB/s): " << std::flush;
+            std::cout << ui::get_margin() << ui::color::bcyan << "Enter bandwidth limit (e.g. 1m = 1 MB/s, 500k = 500 KB/s): " << ui::color::reset << std::flush;
             std::string val;
             std::getline(std::cin, val);
             if (!val.empty()) {
@@ -261,7 +264,7 @@ int main(int argc, char** argv) {
                 }
             }
         }
-        std::cout << std::endl;
+        std::cout << "\n";
     }
 
     fs::path uploads_dir = fs::current_path() / "uploads";
@@ -305,8 +308,57 @@ int main(int argc, char** argv) {
         std::ostringstream oss;
         oss << "File server listening on 0.0.0.0:" << port << " (uploads dir: " << uploads_dir.string() << ")";
         if (rate_limit_bps > 0) oss << " (rate limit: " << rate_limit_bps << " B/s per client)";
-        log_line(oss.str());
+        {
+            std::lock_guard<std::mutex> lk(g_log_mutex);
+            ui::print_success(oss.str());
+            ui::print_info("Type LIST to view files, or QUIT to stop the server.\n");
+            ui::print_prompt();
+        }
     }
+
+    std::thread console_thread([&uploads_dir]() {
+        std::string line;
+        while (g_running.load()) {
+            if (!std::getline(std::cin, line)) break;
+            if (line.empty()) {
+                std::lock_guard<std::mutex> lk(g_log_mutex);
+                ui::print_prompt();
+                continue;
+            }
+            
+            if (line == "LIST" || line == "list") {
+                std::lock_guard<std::mutex> lk(g_log_mutex);
+                std::string listing = ft::list_files(uploads_dir);
+                if (listing.empty()) {
+                    ui::print_info("No files currently on server.");
+                } else {
+                    ui::print_file_list_header();
+                    std::istringstream iss(listing);
+                    std::string entry;
+                    while (std::getline(iss, entry)) {
+                        auto tab = entry.find('\t');
+                        if (tab != std::string::npos) {
+                            std::string size_str = entry.substr(tab + 1);
+                            uint64_t sz = 0;
+                            try { sz = std::stoull(size_str); } catch (...) {}
+                            ui::print_file_entry(entry.substr(0, tab), ui::format_size(sz));
+                        } else {
+                            ui::print_file_entry(entry, "");
+                        }
+                    }
+                    std::cout << "\n";
+                }
+                ui::print_prompt();
+            } else if (line == "QUIT" || line == "quit" || line == "EXIT" || line == "exit") {
+                signal_handler(SIGINT);
+                break;
+            } else {
+                std::lock_guard<std::mutex> lk(g_log_mutex);
+                ui::print_error("Unknown command. Try LIST or QUIT.");
+                ui::print_prompt();
+            }
+        }
+    });
 
     // Managed thread list instead of detach()
     std::vector<std::thread> workers;
@@ -355,5 +407,6 @@ int main(int argc, char** argv) {
     }
 
     log_line("Server stopped.");
+    console_thread.detach();
     return 0;
 }

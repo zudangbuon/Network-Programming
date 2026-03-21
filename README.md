@@ -46,12 +46,19 @@ Client will save downloaded files to `./downloads/` (auto-created).
 
 ## Commands
 
-In client prompt:
+### Server Prompt
 
-- `LIST`
-- `UPLOAD <local_path>`
-- `DOWNLOAD <filename>`
-- `QUIT`
+The server runs its own interactive console while listening for connections:
+- `LIST`: Displays all files currently stored in the server's local `uploads/` directory, presented in a clean, human-readable format with dynamic file-type emojis and an aligned table view identical to the client.
+- `QUIT`: Triggers a graceful shutdown, safely disconnecting all active clients and closing the socket.
+
+### Client Prompt
+
+In the interactive client terminal:
+- `LIST`: Request the server for a list of available files to download. Output includes smart formatting, dynamic file-type emojis, and aligned columns.
+- `UPLOAD <local_path>`: Upload a file (e.g., `UPLOAD preupload/my_file.bin`). A local `preupload/` directory is provided to easily organize files before uploading.
+- `DOWNLOAD <filename>`: Download a file to the local `downloads/` directory.
+- `QUIT`: Exit the client.
 
 ### Bonus behaviors
 

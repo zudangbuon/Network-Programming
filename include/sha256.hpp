@@ -110,10 +110,10 @@ class Sha256 {
     }
 
     static uint32_t get32be(const uint8_t* p) {
-        return (static_cast<uint32_t>(p[0]) << 24) |
-                      (static_cast<uint32_t>(p[1]) << 16) |
-                      (static_cast<uint32_t>(p[2]) << 8) |
-                      (static_cast<uint32_t>(p[3]) << 0);
+        return  (static_cast<uint32_t>(p[0]) << 24) |
+                (static_cast<uint32_t>(p[1]) << 16) |
+                (static_cast<uint32_t>(p[2]) << 8) |
+                (static_cast<uint32_t>(p[3]) << 0);
     }
 
     void transform(const uint8_t block[64]) {
