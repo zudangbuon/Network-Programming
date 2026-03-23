@@ -1,17 +1,22 @@
-# Multi-Client File Transfer Server (B1)
+# Multi-Client File Transfer Server
 
 ## Build
 
-From this folder:
+Open 3 terminal, 1 server and 2 clients.
+
+From this folder, use this command to compile:
 
 ```bash
 make
 ```
 
-Or manually:
+or manually:
 
 ```bash
 g++ -std=c++17 -O2 -pthread -Iinclude src/server.cpp -o bin/server
+```
+
+```bash
 g++ -std=c++17 -O2 -pthread -Iinclude src/client.cpp -o bin/client
 ```
 
@@ -25,12 +30,15 @@ g++ -std=c++17 -O2 -pthread -Iinclude src/client.cpp -o bin/client
 
 The server will interactively ask if you want to enable rate limiting:
 
-```
+```bash
 Enable rate limiting per client? [y/N]: y
+```
+
+```bash
 Enter bandwidth limit (e.g. 1m = 1 MB/s, 500k = 500 KB/s): 1m
 ```
 
-Or pass rate limit directly via command line:
+or pass rate limit directly via command line:
 
 ```bash
 ./bin/server 8784 1048576
@@ -49,18 +57,47 @@ Client will save downloaded files to `./downloads/` (auto-created).
 ### Server Prompt
 
 The server runs its own interactive console while listening for connections:
-- `LIST`: Displays all files currently stored in the server's local `uploads/` directory, presented in a clean, human-readable format with dynamic file-type emojis and an aligned table view identical to the client.
-- `QUIT`: Triggers a graceful shutdown, safely disconnecting all active clients and closing the socket.
+
+`LIST`: Displays all files currently stored in the server's local `uploads/` directory, presented in a clean, human-readable format with dynamic file-type emojis and an aligned table view identical to the client.
+
+```bash
+list
+```
+
+`QUIT`: Triggers a graceful shutdown, safely disconnecting all active clients and closing the socket.
+
+```bash
+quit
+```
 
 ### Client Prompt
 
 In the interactive client terminal:
-- `LIST`: Request the server for a list of available files to download. Output includes smart formatting, dynamic file-type emojis, and aligned columns.
-- `UPLOAD <local_path>`: Upload a file (e.g., `UPLOAD preupload/my_file.bin`). A local `preupload/` directory is provided to easily organize files before uploading.
-- `DOWNLOAD <filename>`: Download a file to the local `downloads/` directory.
-- `QUIT`: Exit the client.
 
-### Bonus behaviors
+`LIST`: Request the server for a list of available files to download. Output includes smart formatting, dynamic file-type emojis, and aligned columns.
+
+```bash
+list
+```
+
+`UPLOAD`: Upload a file. A local `preupload/` directory is provided to easily organize files before uploading.
+
+```bash
+upload preupload/<filename>
+```
+
+`DOWNLOAD`: Download a file to the local `downloads/` directory.
+
+```bash
+download <filename>
+```
+`QUIT`: Exit the client.
+
+```bash
+quit
+```
+
+### Bonus features
 
 - **Resume upload**: if the server already has a partial `uploads/<filename>`, re-running `UPLOAD` continues from the last byte on disk.
 - **Resume download**: if the client already has a partial `downloads/<filename>`, re-running `DOWNLOAD` continues from the last byte on disk.
@@ -110,5 +147,5 @@ Terminal C:
 ```
 
 Try:
-- On B: `UPLOAD path/to/file.bin`
-- On C: `LIST` and `DOWNLOAD file.bin`
+- On B: `upload path/to/file.bin`
+- On C: `list` and `download file.bin`
