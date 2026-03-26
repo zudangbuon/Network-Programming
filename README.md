@@ -1,6 +1,6 @@
 # Multi-Client File Transfer Server
 
-A multi-client TCP file transfer system written in C++17. Supports concurrent uploads and downloads, resume-on-reconnect, SHA-256 integrity verification, per-client bandwidth limiting, and an interactive terminal UI with ANSI colors and progress bars.
+A multi-client TCP file transfer system written in C++. Supports concurrent uploads and downloads, resume-on-reconnect, SHA-256 integrity verification, per-client bandwidth limiting, and an interactive terminal UI with ANSI colors and progress bars.
 
 ## Requirements
 
@@ -90,34 +90,16 @@ download notes.txt
 
 If a transfer is interrupted, re-running the same `upload` or `download` command automatically resumes from the last successfully transferred byte — no manual intervention needed.
 
+### Per-client bandwidth limiting
+
+The server applies a token-bucket rate limiter independently per client connection. Configure it interactively at startup or pass the limit in bytes/s as a CLI argument.
+
 ### SHA-256 integrity check
 
 Every transfer is verified end-to-end:
 
 - **Upload**: the client sends the file's SHA-256 hash alongside the data. The server recomputes the hash after saving and replies with `MATCH` or `MISMATCH`.
 - **Download**: the server sends the hash before streaming. The client verifies after the file is fully received.
-
-### Per-client bandwidth limiting
-
-The server applies a token-bucket rate limiter independently per client connection. Configure it interactively at startup or pass the limit in bytes/s as a CLI argument.
-
-### Graceful shutdown
-
-The server handles `SIGINT` / `SIGTERM`. On shutdown, it stops accepting new connections and waits for all active client threads to finish cleanly before exiting.
-
-## Load test
-
-Spawn many concurrent client threads to stress-test the server:
-
-```bash
-./bin/client 127.0.0.1 8784 --load 10 --loops 2 --max-kb 512
-```
-
-| Flag | Description |
-|------|-------------|
-| `--load N` | Number of concurrent client threads |
-| `--loops L` | Number of upload+download cycles per client |
-| `--max-kb K` | Random file size per loop, from 1 to K KB |
 
 ## Protocol reference
 
@@ -127,12 +109,6 @@ Spawn many concurrent client threads to stress-test the server:
 | Upload | Client: `UPLOAD <filename> <bytes> <sha256>` → Server: `OK OFFSET <n>` → raw bytes → Server: `OK Saved SHA256 <hash> MATCH\|MISMATCH` |
 | Download | Client: `DOWNLOAD <filename>` → Server: `OK <bytes> <sha256> OFFSET <n>` → raw bytes |
 | Quit | Client: `QUIT` → Server: `OK Bye` |
-
-**Implementation details:**
-- One `std::thread` per client connection; max 128 concurrent connections.
-- 64 KB I/O chunks.
-- 4-byte big-endian length prefix for all control messages (framing).
-- Maximum frame size: 10 MB (prevents memory-exhaustion DoS).
 
 ## Demo — 2 simultaneous clients
 
